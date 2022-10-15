@@ -796,6 +796,43 @@ class SegmentSelector:
         return Polygon(PolyBool.SegmentChainer(union), a.isInverted or b.isInverted)
 
     @staticmethod
+    def difference(a: Polygon, b: Polygon) -> Polygon:
+        firstPolygonRegions = PolyBool.segments(a)
+        secondPolygonRegions = PolyBool.segments(b)
+        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
+        difference = SegmentSelector.select(
+            combinedSegments.combined, [0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 0, 0, 0, 1, 2, 0]
+        )
+
+        return Polygon(
+            PolyBool.SegmentChainer(difference), a.isInverted and not b.isInverted
+        )
+
+    @staticmethod
+    def difference_rev(a: Polygon, b: Polygon) -> Polygon:
+        firstPolygonRegions = PolyBool.segments(a)
+        secondPolygonRegions = PolyBool.segments(b)
+        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
+        difference = SegmentSelector.select(
+            combinedSegments.combined, [0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 0, 2, 0, 0, 0, 0]
+        )
+
+        return Polygon(
+            PolyBool.SegmentChainer(difference), not a.isInverted and b.isInverted
+        )
+
+    @staticmethod
+    def xor(a: Polygon, b: Polygon) -> Polygon:
+        firstPolygonRegions = PolyBool.segments(a)
+        secondPolygonRegions = PolyBool.segments(b)
+        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
+        xor = SegmentSelector.select(
+            combinedSegments.combined, [0, 2, 1, 0, 2, 0, 0, 1, 1, 0, 0, 2, 0, 1, 2, 0]
+        )
+
+        return Polygon(PolyBool.SegmentChainer(xor), a.isInverted != b.isInverted)
+
+    @staticmethod
     def select(segments: typing.List[Segment], selection: typing.List[int]):
         result: typing.List[Segment] = []
         for seg in segments:
