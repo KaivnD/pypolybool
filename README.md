@@ -1,7 +1,7 @@
 # pypolybool
 
 Boolean operations on polygons (union, intersection, difference, xor)
-(this library is a port for python of [polybooljs](https://github.com/voidqk/polybooljs)
+(this library is a port for python of [polybooljs](https://github.com/velipso/polybooljs)
 
 thanks to [idormenco/PolyBool.Net](https://github.com/idormenco/PolyBool.Net), make the work much easier
 
@@ -11,3 +11,7 @@ thanks to [idormenco/PolyBool.Net](https://github.com/idormenco/PolyBool.Net), m
 * Based somewhat on the F. Martinez (2008) algorithm:
     * [Paper](http://www.cs.ucr.edu/~vbz/cs230papers/martinez_boolean.pdf)
     * [Code](https://github.com/akavel/martinez-src
+
+# Example
+
+see tests directory
