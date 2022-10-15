@@ -3,24 +3,6 @@ import typing
 tolerance = 1e-9
 
 T = typing.TypeVar("T")
-
-
-def list_shift(list: typing.List):
-    list.pop(0)
-
-
-def list_pop(list: typing.List):
-    list.pop()
-
-
-def list_splice(list: typing.List, index: int, count: int):
-    del list[index : index + count]
-
-
-def list_unshift(list: typing.List[T], element: T):
-    list.insert(0, element)
-
-
 TPoint = typing.TypeVar("TPoint", bound="Point")
 
 
@@ -646,209 +628,217 @@ class SegmentChainerMatcher:
         return True
 
 
-class PolyBool:
-    @staticmethod
-    def SegmentChainer(segments: typing.List[Segment]) -> typing.List[Region]:
-        regions: typing.List[Region] = []
-        chains: typing.List[typing.List[Point]] = []
+def list_shift(list: typing.List):
+    list.pop(0)
 
-        for seg in segments:
-            pt1 = seg.start
-            pt2 = seg.end
-            if pt1 == pt2:
-                continue
 
-            scm = SegmentChainerMatcher()
+def list_pop(list: typing.List):
+    list.pop()
 
-            for i in range(len(chains)):
-                chain = chains[i]
-                head = chain[0]
-                tail = chain[-1]
 
-                if head == pt1:
-                    if scm.setMatch(i, True, True):
-                        break
-                elif head == pt2:
-                    if scm.setMatch(i, True, False):
-                        break
-                elif tail == pt1:
-                    if scm.setMatch(i, False, True):
-                        break
-                elif tail == pt2:
-                    if scm.setMatch(i, False, False):
-                        break
+def list_splice(list: typing.List, index: int, count: int):
+    del list[index : index + count]
 
-            if scm.nextMatch is scm.firstMatch:
-                chains.append([pt1, pt2])
-                continue
 
-            if scm.nextMatch is scm.secondMatch:
-                index = scm.firstMatch.index
-                pt = pt2 if scm.firstMatch.matchesPt1 else pt1
-                addToHead = scm.firstMatch.matchesHead
+def list_unshift(list: typing.List[T], element: T):
+    list.insert(0, element)
 
-                chain = chains[index]
-                grow = chain[0] if addToHead else chain[-1]
-                grow2 = chain[1] if addToHead else chain[-2]
-                oppo = chain[-1] if addToHead else chain[0]
-                oppo2 = chain[-2] if addToHead else chain[1]
 
-                if Point.collinear(grow2, grow, pt):
-                    if addToHead:
-                        list_shift(chain)
-                    else:
-                        list_pop(chain)
-                    grow = grow2
-                if oppo == pt:
-                    list_splice(chains, index, 1)
-                    if Point.collinear(oppo2, oppo, grow):
-                        if addToHead:
-                            list_pop(chain)
-                        else:
-                            list_shift(chain)
-                    regions.append(chain)
-                    continue
+def segmentChainer(segments: typing.List[Segment]) -> typing.List[Region]:
+    regions: typing.List[Region] = []
+    chains: typing.List[typing.List[Point]] = []
+
+    for seg in segments:
+        pt1 = seg.start
+        pt2 = seg.end
+        if pt1 == pt2:
+            continue
+
+        scm = SegmentChainerMatcher()
+
+        for i in range(len(chains)):
+            chain = chains[i]
+            head = chain[0]
+            tail = chain[-1]
+
+            if head == pt1:
+                if scm.setMatch(i, True, True):
+                    break
+            elif head == pt2:
+                if scm.setMatch(i, True, False):
+                    break
+            elif tail == pt1:
+                if scm.setMatch(i, False, True):
+                    break
+            elif tail == pt2:
+                if scm.setMatch(i, False, False):
+                    break
+
+        if scm.nextMatch is scm.firstMatch:
+            chains.append([pt1, pt2])
+            continue
+
+        if scm.nextMatch is scm.secondMatch:
+            index = scm.firstMatch.index
+            pt = pt2 if scm.firstMatch.matchesPt1 else pt1
+            addToHead = scm.firstMatch.matchesHead
+
+            chain = chains[index]
+            grow = chain[0] if addToHead else chain[-1]
+            grow2 = chain[1] if addToHead else chain[-2]
+            oppo = chain[-1] if addToHead else chain[0]
+            oppo2 = chain[-2] if addToHead else chain[1]
+
+            if Point.collinear(grow2, grow, pt):
                 if addToHead:
-                    list_unshift(chain, pt)
+                    list_shift(chain)
                 else:
-                    chain.append(pt)
-                continue
-
-            def reverseChain(index: int):
-                chains[index].reverse()
-
-            def appendChain(index1: int, index2: int):
-                chain1 = chains[index1]
-                chain2 = chains[index2]
-                tail = chain1[-1]
-                tail2 = chain1[-2]
-                head = chain2[0]
-                head2 = chain2[1]
-
-                if Point.collinear(tail2, tail, head):
-                    list_pop(chain1)
-                    tail = tail2
-                if Point.collinear(tail, head, head2):
-                    list_shift(chain2)
-
-                chains[index1] = chain1 + chain2
-                list_splice(chains, index2, 1)
-
-            f = scm.firstMatch.index
-            s = scm.secondMatch.index
-
-            reverseF = len(chains[f]) < len(chains[s])
-            if scm.firstMatch.matchesHead:
-                if scm.secondMatch.matchesHead:
-                    if reverseF:
-                        reverseChain(f)
-                        appendChain(f, s)
+                    list_pop(chain)
+                grow = grow2
+            if oppo == pt:
+                list_splice(chains, index, 1)
+                if Point.collinear(oppo2, oppo, grow):
+                    if addToHead:
+                        list_pop(chain)
                     else:
-                        reverseChain(s)
-                        appendChain(s, f)
-                else:
-                    appendChain(s, f)
+                        list_shift(chain)
+                regions.append(chain)
+                continue
+            if addToHead:
+                list_unshift(chain, pt)
             else:
-                if scm.secondMatch.matchesHead:
+                chain.append(pt)
+            continue
+
+        def reverseChain(index: int):
+            chains[index].reverse()
+
+        def appendChain(index1: int, index2: int):
+            chain1 = chains[index1]
+            chain2 = chains[index2]
+            tail = chain1[-1]
+            tail2 = chain1[-2]
+            head = chain2[0]
+            head2 = chain2[1]
+
+            if Point.collinear(tail2, tail, head):
+                list_pop(chain1)
+                tail = tail2
+            if Point.collinear(tail, head, head2):
+                list_shift(chain2)
+
+            chains[index1] = chain1 + chain2
+            list_splice(chains, index2, 1)
+
+        f = scm.firstMatch.index
+        s = scm.secondMatch.index
+
+        reverseF = len(chains[f]) < len(chains[s])
+        if scm.firstMatch.matchesHead:
+            if scm.secondMatch.matchesHead:
+                if reverseF:
+                    reverseChain(f)
                     appendChain(f, s)
                 else:
-                    if reverseF:
-                        reverseChain(f)
-                        appendChain(s, f)
-                    else:
-                        reverseChain(s)
-                        appendChain(f, s)
+                    reverseChain(s)
+                    appendChain(s, f)
+            else:
+                appendChain(s, f)
+        else:
+            if scm.secondMatch.matchesHead:
+                appendChain(f, s)
+            else:
+                if reverseF:
+                    reverseChain(f)
+                    appendChain(s, f)
+                else:
+                    reverseChain(s)
+                    appendChain(f, s)
 
-        return regions
+    return regions
 
-    @staticmethod
-    def segments(poly: Polygon):
-        i = RegionIntersecter()
-        for region in poly.regions:
-            i.addRegion(region)
-        return PolySegments(i.calculate(poly.isInverted), poly.isInverted)
 
-    @staticmethod
-    def combine(segments1: PolySegments, segments2: PolySegments):
-        i = SegmentIntersecter()
-        return CombinedPolySegments(
-            i.calculate(
-                segments1.segments,
-                segments1.isInverted,
-                segments2.segments,
-                segments2.isInverted,
-            ),
+def segments(poly: Polygon):
+    i = RegionIntersecter()
+    for region in poly.regions:
+        i.addRegion(region)
+    return PolySegments(i.calculate(poly.isInverted), poly.isInverted)
+
+
+def combine(segments1: PolySegments, segments2: PolySegments):
+    i = SegmentIntersecter()
+    return CombinedPolySegments(
+        i.calculate(
+            segments1.segments,
             segments1.isInverted,
+            segments2.segments,
             segments2.isInverted,
+        ),
+        segments1.isInverted,
+        segments2.isInverted,
+    )
+
+
+def __select(segments: typing.List[Segment], selection: typing.List[int]):
+    result: typing.List[Segment] = []
+    for seg in segments:
+        index = (
+            (8 if seg.myfill.above else 0)
+            + (4 if seg.myfill.below else 0)
+            + (2 if seg.otherfill is not None and seg.otherfill.above else 0)
+            + (1 if seg.otherfill is not None and seg.otherfill.below else 0)
         )
 
-
-class SegmentSelector:
-    @staticmethod
-    def union(a: Polygon, b: Polygon) -> Polygon:
-        firstPolygonRegions = PolyBool.segments(a)
-        secondPolygonRegions = PolyBool.segments(b)
-        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
-        union = SegmentSelector.select(
-            combinedSegments.combined, [0, 2, 1, 0, 2, 2, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0]
-        )
-
-        return Polygon(PolyBool.SegmentChainer(union), a.isInverted or b.isInverted)
-
-    @staticmethod
-    def difference(a: Polygon, b: Polygon) -> Polygon:
-        firstPolygonRegions = PolyBool.segments(a)
-        secondPolygonRegions = PolyBool.segments(b)
-        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
-        difference = SegmentSelector.select(
-            combinedSegments.combined, [0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 0, 0, 0, 1, 2, 0]
-        )
-
-        return Polygon(
-            PolyBool.SegmentChainer(difference), a.isInverted and not b.isInverted
-        )
-
-    @staticmethod
-    def difference_rev(a: Polygon, b: Polygon) -> Polygon:
-        firstPolygonRegions = PolyBool.segments(a)
-        secondPolygonRegions = PolyBool.segments(b)
-        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
-        difference = SegmentSelector.select(
-            combinedSegments.combined, [0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 0, 2, 0, 0, 0, 0]
-        )
-
-        return Polygon(
-            PolyBool.SegmentChainer(difference), not a.isInverted and b.isInverted
-        )
-
-    @staticmethod
-    def xor(a: Polygon, b: Polygon) -> Polygon:
-        firstPolygonRegions = PolyBool.segments(a)
-        secondPolygonRegions = PolyBool.segments(b)
-        combinedSegments = PolyBool.combine(firstPolygonRegions, secondPolygonRegions)
-        xor = SegmentSelector.select(
-            combinedSegments.combined, [0, 2, 1, 0, 2, 0, 0, 1, 1, 0, 0, 2, 0, 1, 2, 0]
-        )
-
-        return Polygon(PolyBool.SegmentChainer(xor), a.isInverted != b.isInverted)
-
-    @staticmethod
-    def select(segments: typing.List[Segment], selection: typing.List[int]):
-        result: typing.List[Segment] = []
-        for seg in segments:
-            index = (
-                (8 if seg.myfill.above else 0)
-                + (4 if seg.myfill.below else 0)
-                + (2 if seg.otherfill is not None and seg.otherfill.above else 0)
-                + (1 if seg.otherfill is not None and seg.otherfill.below else 0)
-            )
-
-            if selection[index] != 0:
-                result.append(
-                    Segment(
-                        start=seg.start,
-                        end=seg.end,
-                        myfill=Fill(selection[index] == 2, above=selection[index] == 1),
-                    )
+        if selection[index] != 0:
+            result.append(
+                Segment(
+                    start=seg.start,
+                    end=seg.end,
+                    myfill=Fill(selection[index] == 2, above=selection[index] == 1),
                 )
-        return result
+            )
+    return result
+
+
+def union(a: Polygon, b: Polygon) -> Polygon:
+    firstPolygonRegions = segments(a)
+    secondPolygonRegions = segments(b)
+    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
+    union = __select(
+        combinedSegments.combined, [0, 2, 1, 0, 2, 2, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0]
+    )
+
+    return Polygon(segmentChainer(union), a.isInverted or b.isInverted)
+
+
+def difference(a: Polygon, b: Polygon) -> Polygon:
+    firstPolygonRegions = segments(a)
+    secondPolygonRegions = segments(b)
+    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
+    difference = __select(
+        combinedSegments.combined, [0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 0, 0, 0, 1, 2, 0]
+    )
+
+    return Polygon(segmentChainer(difference), a.isInverted and not b.isInverted)
+
+
+def difference_rev(a: Polygon, b: Polygon) -> Polygon:
+    firstPolygonRegions = segments(a)
+    secondPolygonRegions = segments(b)
+    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
+    difference = __select(
+        combinedSegments.combined, [0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 0, 2, 0, 0, 0, 0]
+    )
+
+    return Polygon(segmentChainer(difference), not a.isInverted and b.isInverted)
+
+
+def xor(a: Polygon, b: Polygon) -> Polygon:
+    firstPolygonRegions = segments(a)
+    secondPolygonRegions = segments(b)
+    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
+    xor = __select(
+        combinedSegments.combined, [0, 2, 1, 0, 2, 0, 0, 1, 1, 0, 0, 2, 0, 1, 2, 0]
+    )
+
+    return Polygon(segmentChainer(xor), a.isInverted != b.isInverted)

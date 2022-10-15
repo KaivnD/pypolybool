@@ -1,8 +1,9 @@
-from polybool import *
+import polybool
+from polybool import Point, Polygon
 
 
 def test_case_1():
-    region_a: Region = [
+    region_a = [
         Point(174.731903, -72.989276),
         Point(-70.77748, -53.08311),
         Point(-72.252011, 215.281501),
@@ -12,7 +13,7 @@ def test_case_1():
         Point(174.731903, -72.989276),
     ]
 
-    region_b: Region = [
+    region_b = [
         Point(-169.571046, -98.793566),
         Point(-145.241287, 63.404826),
         Point(11.796247, 34.651475),
@@ -21,7 +22,7 @@ def test_case_1():
         Point(-169.571046, -98.793566),
     ]
 
-    result = SegmentSelector.union(Polygon([region_a]), Polygon([region_b]))
+    result = polybool.union(Polygon([region_a]), Polygon([region_b]))
 
     assert len(result.regions) == 1
 
