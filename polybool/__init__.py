@@ -700,7 +700,7 @@ class PolyBool:
                         list_pop(chain)
                     grow = grow2
                 if oppo == pt:
-                    list_splice(chain, index, 1)
+                    list_splice(chains, index, 1)
                     if Point.collinear(oppo2, oppo, grow):
                         if addToHead:
                             list_pop(chain)

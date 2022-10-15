@@ -28,6 +28,8 @@ def test_case_1():
     region = result.regions[0]
 
     except_region = [
+        216.756032,
+        22.117962,
         174.731903,
         -72.989276,
         9.68283014596045,
