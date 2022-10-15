@@ -213,9 +213,6 @@ class Transition:
         self.insert = insert
 
 
-Region = typing.List[Point]
-
-
 class LinkedList:
     def __init__(self) -> None:
         self.__root = Node(isRoot=True)
@@ -288,9 +285,24 @@ class LinkedList:
         return data
 
 
+RegionInput = typing.Union[typing.List[Point], typing.List[typing.Tuple[float, float]]]
+Region = typing.List[Point]
+
+
 class Polygon:
-    def __init__(self, regions: typing.List[Region], isInverted=False) -> None:
-        self.regions = regions
+    def __init__(self, regions: typing.List[RegionInput], isInverted=False) -> None:
+        _regions: typing.List[Region] = []
+        for region in regions:
+            tmp: Region = []
+            for pt in region:
+                if isinstance(pt, Point):
+                    tmp.append(pt)
+                elif isinstance(pt, tuple):
+                    x, y = pt
+                    tmp.append(Point(x, y))
+            _regions.append(tmp)
+
+        self.regions = _regions
         self.isInverted = isInverted
 
 
