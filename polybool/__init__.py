@@ -1,5 +1,6 @@
 import typing
 
+
 tolerance = 1e-9
 
 T = typing.TypeVar("T")
@@ -770,27 +771,6 @@ def segmentChainer(segments: typing.List[Segment]) -> typing.List[Region]:
     return regions
 
 
-def segments(poly: Polygon):
-    i = RegionIntersecter()
-    for region in poly.regions:
-        i.addRegion(region)
-    return PolySegments(i.calculate(poly.isInverted), poly.isInverted)
-
-
-def combine(segments1: PolySegments, segments2: PolySegments):
-    i = SegmentIntersecter()
-    return CombinedPolySegments(
-        i.calculate(
-            segments1.segments,
-            segments1.isInverted,
-            segments2.segments,
-            segments2.isInverted,
-        ),
-        segments1.isInverted,
-        segments2.isInverted,
-    )
-
-
 def __select(segments: typing.List[Segment], selection: typing.List[int]):
     result: typing.List[Segment] = []
     for seg in segments:
@@ -812,45 +792,142 @@ def __select(segments: typing.List[Segment], selection: typing.List[int]):
     return result
 
 
-def union(a: Polygon, b: Polygon) -> Polygon:
-    firstPolygonRegions = segments(a)
-    secondPolygonRegions = segments(b)
-    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
-    union = __select(
-        combinedSegments.combined, [0, 2, 1, 0, 2, 2, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0]
+# core API
+def segments(poly: Polygon) -> PolySegments:
+    i = RegionIntersecter()
+    for region in poly.regions:
+        i.addRegion(region)
+    return PolySegments(i.calculate(poly.isInverted), poly.isInverted)
+
+
+def combine(segments1: PolySegments, segments2: PolySegments) -> CombinedPolySegments:
+    i = SegmentIntersecter()
+    return CombinedPolySegments(
+        i.calculate(
+            segments1.segments,
+            segments1.isInverted,
+            segments2.segments,
+            segments2.isInverted,
+        ),
+        segments1.isInverted,
+        segments2.isInverted,
     )
 
-    return Polygon(segmentChainer(union), a.isInverted or b.isInverted)
 
-
-def difference(a: Polygon, b: Polygon) -> Polygon:
-    firstPolygonRegions = segments(a)
-    secondPolygonRegions = segments(b)
-    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
-    difference = __select(
-        combinedSegments.combined, [0, 0, 0, 0, 2, 0, 2, 0, 1, 1, 0, 0, 0, 1, 2, 0]
+def selectUnion(polyseg: CombinedPolySegments) -> PolySegments:
+    return PolySegments(
+        segments=__select(
+            # fmt:off
+            polyseg.combined, [
+                0, 2, 1, 0,
+                2, 2, 0, 0,
+                1, 0, 1, 0,
+                0, 0, 0, 0,
+            ]
+            # fmt:on
+        ),
+        isInverted=(polyseg.isInverted1 or polyseg.isInverted2),
     )
 
-    return Polygon(segmentChainer(difference), a.isInverted and not b.isInverted)
 
-
-def difference_rev(a: Polygon, b: Polygon) -> Polygon:
-    firstPolygonRegions = segments(a)
-    secondPolygonRegions = segments(b)
-    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
-    difference = __select(
-        combinedSegments.combined, [0, 2, 1, 0, 0, 0, 1, 1, 0, 2, 0, 2, 0, 0, 0, 0]
+def selectIntersect(polyseg: CombinedPolySegments) -> PolySegments:
+    return PolySegments(
+        segments=__select(
+            # fmt:off
+            polyseg.combined, [
+                0, 0, 0, 0,
+                0, 2, 0, 2,
+                0, 0, 1, 1,
+                0, 2, 1, 0
+            ]
+            # fmt:on
+        ),
+        isInverted=(polyseg.isInverted1 and polyseg.isInverted2),
     )
 
-    return Polygon(segmentChainer(difference), not a.isInverted and b.isInverted)
 
-
-def xor(a: Polygon, b: Polygon) -> Polygon:
-    firstPolygonRegions = segments(a)
-    secondPolygonRegions = segments(b)
-    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
-    xor = __select(
-        combinedSegments.combined, [0, 2, 1, 0, 2, 0, 0, 1, 1, 0, 0, 2, 0, 1, 2, 0]
+def selectDifference(polyseg: CombinedPolySegments) -> PolySegments:
+    return PolySegments(
+        segments=__select(
+            # fmt:off
+            polyseg.combined, [
+                0, 0, 0, 0,
+                2, 0, 2, 0,
+                1, 1, 0, 0,
+                0, 1, 2, 0
+            ]
+            # fmt:on
+        ),
+        isInverted=(polyseg.isInverted1 and not polyseg.isInverted2),
     )
 
-    return Polygon(segmentChainer(xor), a.isInverted != b.isInverted)
+
+def selectDifferenceRev(polyseg: CombinedPolySegments) -> PolySegments:
+    return PolySegments(
+        segments=__select(
+            # fmt:off
+            polyseg.combined, [
+                0, 2, 1, 0,
+                0, 0, 1, 1,
+                0, 2, 0, 2,
+                0, 0, 0, 0
+            ]
+            # fmt:on
+        ),
+        isInverted=(not polyseg.isInverted1 and polyseg.isInverted2),
+    )
+
+
+def selectXor(polyseg: CombinedPolySegments) -> PolySegments:
+    return PolySegments(
+        segments=__select(
+            # fmt:off
+            polyseg.combined, [
+                0, 2, 1, 0,
+                2, 0, 0, 1,
+                1, 0, 0, 2,
+                0, 1, 2, 0
+            ]
+            # fmt:on
+        ),
+        isInverted=(polyseg.isInverted1 != polyseg.isInverted2),
+    )
+
+
+def polygon(segments: PolySegments):
+    return Polygon(segmentChainer(segments.segments), segments.isInverted)
+
+
+def __operate(
+    poly1: Polygon,
+    poly2: Polygon,
+    selector: typing.Callable[[CombinedPolySegments], PolySegments],
+):
+    firstPolygonRegions = segments(poly1)
+    secondPolygonRegions = segments(poly2)
+    combinedSegments = combine(firstPolygonRegions, secondPolygonRegions)
+    seg = selector(combinedSegments)
+    return polygon(seg)
+
+
+# helper functions for common operations
+
+
+def union(poly1: Polygon, poly2: Polygon):
+    return __operate(poly1, poly2, selectUnion)
+
+
+def intersect(poly1: Polygon, poly2: Polygon):
+    return __operate(poly1, poly2, selectIntersect)
+
+
+def difference(poly1: Polygon, poly2: Polygon):
+    return __operate(poly1, poly2, selectDifference)
+
+
+def differenceRev(poly1: Polygon, poly2: Polygon):
+    return __operate(poly1, poly2, selectDifferenceRev)
+
+
+def xor(poly1: Polygon, poly2: Polygon):
+    return __operate(poly1, poly2, selectXor)
