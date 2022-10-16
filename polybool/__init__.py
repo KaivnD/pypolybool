@@ -1,7 +1,7 @@
 import typing
 
 
-tolerance = 1e-9
+tolerance = 1e-10
 
 T = typing.TypeVar("T")
 TPoint = typing.TypeVar("TPoint", bound="Point")
@@ -92,16 +92,22 @@ class Point:
         return abs(self.x - __o.x) < tolerance and abs(self.y - __o.y) < tolerance
 
     def __repr__(self) -> str:
-        return "{}, {}".format(self.x, self.y)
+        return "{},{}".format(self.x, self.y)
 
     def __str__(self) -> str:
-        return "{}, {}".format(self.x, self.y)
+        return "{},{}".format(self.x, self.y)
 
 
 class Fill:
     def __init__(self, below: bool = None, above: bool = None) -> None:
         self.below = below
         self.above = above
+
+    def __repr__(self) -> str:
+        return "{},{}".format(self.above, self.below)
+
+    def __str__(self) -> str:
+        return "{},{}".format(self.above, self.below)
 
 
 class Segment:
@@ -151,15 +157,6 @@ class Matcher:
         self.matchesHead = matchesHead
         self.matchesPt1 = matchesPt1
 
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, Matcher):
-            return False
-        return (
-            self.index == other.index
-            and self.matchesHead == other.matchesHead
-            and self.matchesPt1 == other.matchesPt1
-        )
-
 
 class IntersectionPoint:
     def __init__(self, alongA: int, alongB: int, pt: Point) -> None:
@@ -197,12 +194,6 @@ class Node:
         self.pt = pt
         self.seg = seg
         self.primary = primary
-
-    def __hash__(self):
-        hash = self.previous.__hash__() if self.previous is not None else 0
-        hash = (hash * 397) ^ (self.next.__hash__() if self.next is not None else 0)
-        hash = (hash * 397) ^ self.isRoot.__hash__()
-        return hash
 
 
 class Transition:
@@ -315,6 +306,11 @@ class Intersecter:
     def newsegment(self, start: Point, end: Point):
         return Segment(start=start, end=end, myfill=Fill())
 
+    def segmentCopy(self, start: Point, end: Point, seg: Segment):
+        return Segment(
+            start=start, end=end, myfill=Fill(seg.myfill.below, seg.myfill.above)
+        )
+
     def __eventCompare(
         self,
         p1IsStart: bool,
@@ -379,6 +375,18 @@ class Intersecter:
     def eventAddSegment(self, segment: Segment, primary: bool):
         evStart = self.__eventAddSegmentStart(segment, primary)
         self.__eventAddSegmentEnd(evStart, segment, primary)
+        return evStart
+
+    def __eventUpdateEnd(self, ev: Node, end: Point):
+        ev.other.remove()
+        ev.seg.end = end
+        ev.other.pt = end
+        self.__eventAdd(ev.other, ev.pt)
+
+    def __eventDivide(self, ev: Node, pt: Point):
+        ns = self.segmentCopy(pt, ev.seg.end, ev.seg)
+        self.__eventUpdateEnd(ev, pt)
+        return self.eventAddSegment(ns, ev.primary)
 
     def __statusCompare(self, ev1: Node, ev2: Node):
         a1 = ev1.seg.start
@@ -397,22 +405,6 @@ class Intersecter:
             return self.__statusCompare(ev, here.ev) > 0
 
         return statusRoot.findTransition(check_func)
-
-    def __segmentCopy(self, start: Point, end: Point, seg: Segment):
-        return Segment(
-            start=start, end=end, myfill=Fill(seg.myfill.below, seg.myfill.above)
-        )
-
-    def __eventUpdateEnd(self, ev: Node, end: Point):
-        ev.other.remove()
-        ev.seg.end = end
-        ev.other.pt = end
-        self.__eventAdd(ev.other, ev.pt)
-
-    def __eventDivide(self, ev: Node, pt: Point):
-        ns = self.__segmentCopy(pt, ev.seg.end, ev.seg)
-        self.__eventUpdateEnd(ev, pt)
-        self.eventAddSegment(ns, ev.primary)
 
     def __checkIntersection(self, ev1: Node, ev2: Node):
         seg1 = ev1.seg
@@ -480,8 +472,11 @@ class Intersecter:
     def calculate(self, primaryPolyInverted: bool, secondaryPolyInverted: bool):
         statusRoot = LinkedList()
         segments: typing.List[Segment] = []
+        
+        cnt = 0
 
         while not self.__eventRoot.isEmpty():
+            cnt += 1
             ev = self.__eventRoot.getHead()
             if ev.isStart:
                 surrounding = self.__statusFindSurrounding(statusRoot, ev)
@@ -589,24 +584,6 @@ class SegmentIntersecter(Intersecter):
     def __init__(self) -> None:
         super().__init__(False)
 
-    def addRegion(self, region: Region):
-        pt1: Point
-        pt2 = region[-1]
-        for i in range(len(region)):
-            pt1 = pt2
-            pt2 = region[i]
-            forward = Point.compare(pt1, pt2)
-
-            if forward == 0:
-                continue
-
-            self.eventAddSegment(
-                self.newsegment(
-                    pt1 if forward < 0 else pt2, pt2 if forward < 0 else pt1
-                ),
-                True,
-            )
-
     def calculate(
         self,
         segments1: typing.List[Segment],
@@ -615,10 +592,10 @@ class SegmentIntersecter(Intersecter):
         isInverted2: bool,
     ):
         for seg in segments1:
-            self.eventAddSegment(seg, True)
+            self.eventAddSegment(self.segmentCopy(seg.start, seg.end, seg), True)
 
         for seg in segments2:
-            self.eventAddSegment(seg, False)
+            self.eventAddSegment(self.segmentCopy(seg.start, seg.end, seg), False)
 
         return super().calculate(isInverted1, isInverted2)
 
@@ -913,8 +890,30 @@ def __operate(
 # helper functions for common operations
 
 
-def union(poly1: Polygon, poly2: Polygon):
-    return __operate(poly1, poly2, selectUnion)
+@typing.overload
+def union(polygons: typing.List[Polygon]) -> Polygon:
+    ...
+
+
+@typing.overload
+def union(poly1: Polygon, poly2: Polygon) -> Polygon:
+    ...
+
+
+def union(*args):
+    if len(args) == 1 and isinstance(args[0], list):
+        polygons = args[0]
+        seg1 = segments(polygons[0])
+        for i in range(1, len(polygons)):
+            seg2 = segments(polygons[i])
+            comb = combine(seg1, seg2)
+            seg1 = selectUnion(comb)
+
+        return polygon(seg1)
+    elif (
+        len(args) == 2 and isinstance(args[0], Polygon) and isinstance(args[1], Polygon)
+    ):
+        return __operate(args[0], args[1], selectUnion)
 
 
 def intersect(poly1: Polygon, poly2: Polygon):
