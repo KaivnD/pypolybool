@@ -497,7 +497,7 @@ class Intersecter:
                         if toggle:
                             eve.seg.myfill.above = not eve.seg.myfill.above
                     else:
-                        eve.seg.otherfill = eve.seg.myfill
+                        eve.seg.otherfill = ev.seg.myfill
                     ev.other.remove()
                     ev.remove()
 
