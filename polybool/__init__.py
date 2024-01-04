@@ -7,6 +7,10 @@ T = typing.TypeVar("T")
 TPoint = typing.TypeVar("TPoint", bound="Point")
 
 
+class PolyBoolException(Exception):
+    pass
+
+
 class Point:
     def __init__(self: TPoint, x: float, y: float) -> None:
         self.x = x
@@ -539,7 +543,7 @@ class Intersecter:
             else:
                 st = ev.status
                 if st is None:
-                    raise Exception(
+                    raise PolyBoolException(
                         "PolyBool: Zero-length segment detected; your epsilon is probably too small or too large"
                     )
                 if statusRoot.exists(st.previous) and statusRoot.exists(st.next):
